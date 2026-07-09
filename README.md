@@ -26,10 +26,17 @@ It does **not** forge reCAPTCHA, automate generation, or evade abuse systems. Pr
 Technical write-up: **[docs/ENG_BRIEF.md](docs/ENG_BRIEF.md)** · Privacy: **[PRIVACY.md](PRIVACY.md)** · Security: **[SECURITY.md](SECURITY.md)**
 
 <p align="center">
+  <img src="docs/assets/extension_popup_full.png" alt="Flow Fixer extension — HARD GATE, Molasses cool-down, full speed ladder" width="420"/>
+</p>
+<p align="center">
+  <sub>Extension UI: hard unusual-activity gate → auto downshift to Molasses + cool-down. Full speed ladder + live classify.</sub>
+</p>
+
+<p align="center">
   <img src="docs/assets/ui_unusual_activity.png" alt="Google Flow UI: Failed — We noticed some unusual activity" width="820"/>
 </p>
 <p align="center">
-  <sub>What users see: failed cards with Retry still available — retries add more scored HTTP calls.</sub>
+  <sub>What users see in Flow: failed cards with Retry still available — retries add more scored HTTP calls.</sub>
 </p>
 
 ---
