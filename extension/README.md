@@ -29,8 +29,8 @@ It **serializes / delays** requests so multi-output and Retry don’t redline th
 | 💧 **Water** | room temp | ~4.5s |
 | 🚶 **Brisk Walk** | coffee in hand | ~2.5s |
 | 💼 **The Job** | paid to ship (default) | ~1.2s |
-| 🎸 **Highway Star** | Deep Purple | ~0.6s |
-| 🐎 **Black Beauty** | full gallop | ~0.3s |
+| 🎸 **Highway Star** | Alright. Hold tight. (Deep Purple) | ~0.6s |
+| 🐎 **Black Beauty** | horse + amphetamine | ~0.3s |
 | 🚂 **Casey Jones** | danger at the wheel | parallel / full send |
 
 **Auto shift (default ON):**

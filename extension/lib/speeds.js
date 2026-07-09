@@ -47,22 +47,24 @@ export const SPEEDS = [
   {
     id: "highway_star",
     name: "Highway Star",
-    sub: "Deep Purple",
+    sub: "Alright. Hold tight.",
     emoji: "🎸",
     gapMs: 600,
     serialize: true,
     staggerMs: 200,
-    blurb: "Spicy. Still serialized. Feel the engine, not the wall.",
+    blurb:
+      "I'm a highway star — nobody gonna take my car. Nobody gonna beat my car. Nobody gonna break my gear. Nobody gonna say I'm wrong. Still serialized. Feel the engine, not the wall.",
   },
   {
     id: "black_beauty",
     name: "Black Beauty",
-    sub: "full gallop",
+    sub: "horse + amphetamine",
     emoji: "🐎",
     gapMs: 300,
     serialize: true,
     staggerMs: 120,
-    blurb: "Fast horse. Beautiful until the hard gate.",
+    blurb:
+      "Anna Sewell's thoroughbred energy with a little pharmaceutical poetry — black beauty the horse, black beauty the speed. Full gallop. Gorgeous until the hard gate.",
   },
   {
     id: "casey_jones",
