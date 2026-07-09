@@ -1,0 +1,28 @@
+# secrets / captures — NEVER commit real HARs
+*.har
+!fixtures/**/*.har
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+flowfixer.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.env
+
+# local casework / personal (never ship)
+flow_case/
+*_PERSONAL*
+*.SANITIZED.har
+report.md
+/out/
+
+# os / ide
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
