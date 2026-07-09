@@ -58,10 +58,10 @@ function renderHero(speedId, state) {
   }
 }
 
-function render(summary, state) {
-  const level = summary.level || "idle";
+function render(summary, state, displayLevel) {
+  const level = displayLevel || summary.level || "idle";
   const pill = document.getElementById("levelPill");
-  pill.className = `pill ${level}`;
+  pill.className = `pill ${level === "armed" ? "ok" : level}`;
   pill.textContent =
     level === "hard"
       ? "hard gate"
@@ -69,9 +69,25 @@ function render(summary, state) {
         ? "soft throttle"
         : level === "ok"
           ? "healthy"
-          : level === "idle"
-            ? "idle"
-            : level;
+          : level === "armed"
+            ? "armed · watching"
+            : level === "idle"
+              ? "idle · open Flow"
+              : level;
+
+  // diagnostics strip
+  const diag = document.getElementById("diag");
+  if (diag) {
+    const inj = state.injectReadyAt
+      ? `inject ok (${Math.round((Date.now() - state.injectReadyAt) / 1000)}s ago)`
+      : "inject not seen — hard-refresh Flow";
+    const wr = `net hits: ${state.webRequestHits || 0}`;
+    const n = `gens: ${(state.events && state.events.length) || 0}`;
+    const sample = state.lastUrlSample
+      ? state.lastUrlSample.replace(/^https:\/\/[^/]+/, "")
+      : "no generate URL yet";
+    diag.textContent = `${inj} · ${wr} · ${n}\n${sample}`;
+  }
 
   document.getElementById("nTotal").textContent = summary.total || 0;
   document.getElementById("nOk").textContent = summary.ok || 0;
@@ -137,7 +153,7 @@ function render(summary, state) {
 async function refresh() {
   const res = await cmd("getState");
   if (!res) return;
-  render(res.summary || {}, res.state || {});
+  render(res.summary || {}, res.state || {}, res.displayLevel);
 }
 
 document.getElementById("btnClear").addEventListener("click", async () => {

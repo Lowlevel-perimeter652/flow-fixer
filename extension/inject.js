@@ -10,8 +10,7 @@
 
   const SOURCE = "flow-fixer-inject";
   const CFG_SOURCE = "flow-fixer-config";
-  const GEN_RE = /aisandbox-pa\.googleapis\.com\/.*[Gg]enerate/i;
-  const SKIP_RE = /Status|LogFrontend|batchCheck/i;
+  const SKIP_RE = /Status|LogFrontend|batchCheck|batchLog/i;
 
   const SPEEDS = {
     molasses: { id: "molasses", name: "Molasses", gapMs: 9000, serialize: true, staggerMs: 900 },
@@ -38,7 +37,12 @@
 
   function isGenerate(url) {
     try {
-      return GEN_RE.test(url) && !SKIP_RE.test(url);
+      if (!url || !/aisandbox-pa\.googleapis\.com/i.test(url)) return false;
+      if (SKIP_RE.test(url)) return false;
+      if (/[Gg]enerate/i.test(url)) return true;
+      if (/flowMedia:/i.test(url)) return true;
+      if (/batchAsync/i.test(url) && !/Check|Status/i.test(url)) return true;
+      return false;
     } catch {
       return false;
     }
@@ -406,7 +410,10 @@
   WrappedXHR.prototype = OrigXHR.prototype;
   window.XMLHttpRequest = WrappedXHR;
 
-  emit({ type: "ready", startedAt: Date.now() });
-  // request current config
+  emit({ type: "ready", startedAt: Date.now(), href: location.href });
   emit({ type: "need_config" });
+  // keepalive so popup can show "armed" on SPA routes
+  setInterval(() => {
+    emit({ type: "ping", startedAt: Date.now(), href: location.href });
+  }, 5000);
 })();
