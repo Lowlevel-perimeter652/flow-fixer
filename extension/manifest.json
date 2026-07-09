@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Flow Fixer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Live Flow reliability + AUTO-THROTTLE pace ladder (Molasses → Casey Jones). Read-only scoring awareness — not a bypass tool.",
   "permissions": ["storage", "tabs"],
   "host_permissions": ["https://labs.google/*"],

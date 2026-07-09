@@ -6,6 +6,11 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/coldbricks/flow-fixer/releases/latest/download/flow-fixer-extension.zip"><img alt="Download extension zip" src="https://img.shields.io/badge/download-extension%20.zip-blue?style=for-the-badge&logo=googlechrome&logoColor=white"/></a>
+  <a href="https://github.com/coldbricks/flow-fixer/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/coldbricks/flow-fixer?style=for-the-badge&label=release"/></a>
+</p>
+
+<p align="center">
   <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square"/>
   <img alt="License MIT" src="https://img.shields.io/badge/license-MIT-green?style=flat-square"/>
   <img alt="Scope" src="https://img.shields.io/badge/scope-read--only%20forensics-purple?style=flat-square"/>
@@ -33,16 +38,25 @@ Staff-eng write-up: **[docs/ENG_BRIEF.md](docs/ENG_BRIEF.md)** — the document 
   <img src="docs/assets/cli_preview.png" alt="flowfixer analyze terminal preview" width="820"/>
 </p>
 
-### Browser extension (no HAR export)
+### Browser extension (download from GitHub)
 
-Live monitor **plus AUTO-THROTTLE** — a speed ladder from **Molasses** (way under the scorer) to **Casey Jones** (full send). Auto downshifts on soft/hard, serializes fan-out so you don’t overspeed into sticky unusual-activity.
+Live monitor **plus AUTO-THROTTLE** — speed ladder from **Molasses** to **Casey Jones**.
 
-```text
-Chrome → chrome://extensions → Developer mode → Load unpacked
-         → select the extension/ folder → refresh labs.google
-```
+**1. Download the package (in your browser):**  
+**[↓ flow-fixer-extension.zip](https://github.com/coldbricks/flow-fixer/releases/latest/download/flow-fixer-extension.zip)**
 
-Full steps: **[extension/README.md](extension/README.md)**
+**2. Unzip** it somewhere permanent (e.g. `Downloads\flow-fixer-extension`).
+
+**3. Load in Chrome / Edge / Brave:**
+1. Open `chrome://extensions` (or `edge://extensions`)
+2. Enable **Developer mode**
+3. **Load unpacked** → select the **unzipped folder** (the one that contains `manifest.json`)
+4. Open [Flow](https://labs.google/fx/tools/flow) → **hard refresh** (`Ctrl+Shift+R`)
+5. Pin **Flow Fixer**
+
+> Chrome does not allow one-click install of random zips from the internet (Web Store only). Download → unzip → Load unpacked is the supported path. Same package every release under a **stable URL** so README/links don’t break.
+
+Details: **[extension/README.md](extension/README.md)** · rebuild zip: `pwsh scripts/package_extension.ps1`
 
 ### Python CLI (deep HAR forensics)
 

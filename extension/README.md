@@ -1,22 +1,34 @@
 # Flow Fixer — browser extension
 
-Live reliability monitor for [Google Flow](https://labs.google/fx/tools/flow).  
-**No HAR export.** Watches generate calls in the page, classifies soft vs hard vs filter, shows fan-out pass rates.
+Live reliability monitor + **AUTO-THROTTLE** for [Google Flow](https://labs.google/fx/tools/flow).
 
-Read-only. Does **not** change requests, forge reCAPTCHA, or automate generation.
+## Download (what most people want)
 
-## Install (Chrome / Edge / Brave — unpacked)
+### Direct zip (latest release)
 
-1. Open `chrome://extensions` (or `edge://extensions`)
-2. Enable **Developer mode**
-3. **Load unpacked** → select this folder:  
-   `flow-fixer/extension`
-4. Open [Flow](https://labs.google/fx/tools/flow) and **refresh** the tab (required once)
-5. Click the **Flow Fixer** toolbar icon
+**[Download flow-fixer-extension.zip](https://github.com/coldbricks/flow-fixer/releases/latest/download/flow-fixer-extension.zip)**
 
-Pin the extension for a live badge (`ok` / `~` soft / `!` hard).
+That link always points at the newest packaged build. Your browser downloads it like any other file.
 
-## AUTO-THROTTLE (the fun part)
+### Install from the zip (Chrome / Edge / Brave)
+
+1. **Download** the zip (link above)
+2. **Unzip** to a folder you won’t delete (example: `C:\Users\You\Apps\flow-fixer-extension`)
+3. Open `chrome://extensions` or `edge://extensions`
+4. Turn on **Developer mode**
+5. Click **Load unpacked**
+6. Select the unzipped folder — you should see `manifest.json` inside it
+7. Open https://labs.google/fx/tools/flow and **hard refresh** (`Ctrl+Shift+R`)
+8. Pin **Flow Fixer** on the toolbar
+
+### Why not “Add to Chrome” one-click?
+
+Google only allows silent install from the **Chrome Web Store** (or enterprise policy).  
+GitHub zips are the standard open-source distribution path: download in browser → Load unpacked.
+
+---
+
+## AUTO-THROTTLE
 
 Optional **pace control** on *your* generate calls. Does not forge captcha or strip tokens.
 It **serializes / delays** requests so multi-output and Retry don’t redline the scorer.
@@ -54,31 +66,39 @@ Turn **AUTO-THROTTLE** off anytime to go pure monitor mode.
 
 ## How it works
 
-1. A **MAIN-world** script on `labs.google` wraps `fetch` / `XHR` (observe only).
-2. Generate calls to `aisandbox-pa.googleapis.com` are classified with the same rules as the Python CLI.
-3. The service worker keeps the last 500 events in `chrome.storage.session`.
-4. The popup renders stats; the badge turns red on hard unusual-activity.
+1. A **MAIN-world** script on `labs.google` wraps `fetch` / `XHR` (observe + optional pace).
+2. Generate calls to `aisandbox-pa.googleapis.com` are classified (soft / hard / filter).
+3. Service worker keeps the last 500 events in `chrome.storage.session`.
+4. Popup renders stats; badge shows health.
 
 ## Privacy
 
-- Tokens / projectId / sessionId are redacted in the bridge.
-- Export omits request bodies and prompts.
-- Nothing is sent to a third-party server — all local.
+- Tokens / projectId / sessionId redacted in the bridge  
+- Export omits prompts  
+- Nothing sent to a third-party server  
+
+## Dev install (from repo clone)
+
+```text
+Load unpacked → path/to/flow-fixer/extension
+```
+
+Rebuild release zip:
+
+```powershell
+pwsh scripts/package_extension.ps1
+```
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
-| Always idle | Refresh the Flow tab after install; generate once |
-| No events | Confirm you’re on `https://labs.google/...` |
-| Extension errors | `chrome://extensions` → Errors on Flow Fixer |
+| Always idle | Hard-refresh Flow after install/reload |
+| “Manifest file is missing” | You selected the wrong folder — pick the one with `manifest.json` |
+| Broke after update | Remove extension, re-download zip, Load unpacked again |
 
 ## Pair with the CLI
-
-For deep sticky-gate / multi-hour analysis, you can still export a HAR and run:
 
 ```bash
 python -m flowfixer analyze capture.har
 ```
-
-The extension is for **live** signal; the CLI is for **full-session** forensics.
