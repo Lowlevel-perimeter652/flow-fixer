@@ -23,7 +23,7 @@
 
 It does **not** forge reCAPTCHA, automate generation, or evade abuse systems. Processing is **local** in your browser or on your machine.
 
-Technical write-up: **[docs/ENG_BRIEF.md](docs/ENG_BRIEF.md)** · Privacy: **[PRIVACY.md](PRIVACY.md)** · Security: **[SECURITY.md](SECURITY.md)**
+Technical write-up: **[docs/ENG_BRIEF.md](docs/ENG_BRIEF.md)** · Limitations: **[docs/LIMITATIONS.md](docs/LIMITATIONS.md)** · Privacy: **[PRIVACY.md](PRIVACY.md)** · Security: **[SECURITY.md](SECURITY.md)**
 
 <p align="center">
   <img src="docs/assets/extension_popup_full.png" alt="Flow Fixer extension — HARD GATE, Molasses cool-down, full speed ladder" width="420"/>

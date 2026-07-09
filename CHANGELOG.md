@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1 — peer-review hardening
+
+- Empty-body 429 classification uses **size bands** (not only exact 287/297)  
+- Unknown empty 429s treated less punitively for auto-throttle severity  
+- Stronger partial-body regex for hard/soft reason strings  
+- **docs/LIMITATIONS.md** — reCAPTCHA env fingerprint, VPN confounds, size-fallback brittleness  
+
 ## 0.4.0 — live hardening
 
 - **Privacy:** project UUIDs redacted in diag strip, stored events, and exports  

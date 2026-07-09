@@ -23,9 +23,22 @@ FILTER_MARKERS = (
     "PUBLIC_ERROR_UNSAFE_GENERATION",
 )
 
-# Empirically observed content.size fingerprints (bytes) for empty-body 429s
+# Empirically observed content.size fingerprints (bytes) for empty-body 429s (~2026).
+# Prefer reason enums in the body. Size is a banded fallback only.
 SIZE_HARD = 287
 SIZE_SOFT = 297
+
+
+def classify_429_by_size(size: int) -> str:
+    """Fallback when response body is missing. Bands tolerate minor payload edits."""
+    if size is None or size < 0:
+        return "429_NO_BODY"
+    # Classic hard ~287; soft ~297. Prefer soft in 293–310; hard in 280–292.
+    if 280 <= size <= 292:
+        return "HARD_UNUSUAL"
+    if 293 <= size <= 310:
+        return "SOFT_THROTTLE"
+    return f"429_NO_BODY_size{size}"
 
 
 def _parse_ts(e: dict[str, Any]) -> datetime:
@@ -67,15 +80,18 @@ def classify_outcome(status: int, body: str, size: int) -> str:
     for r in SOFT_REASONS:
         if r in body:
             return "SOFT_THROTTLE"
-    if status == 429 and not body:
-        if size == SIZE_HARD:
+    if status == 429 and body:
+        if re.search(r"TOO_MUCH|UNUSUAL_ACTIVITY", body, re.I):
             return "HARD_UNUSUAL"
-        if size == SIZE_SOFT:
+        if re.search(r"THROTTLED|too quickly", body, re.I):
             return "SOFT_THROTTLE"
-        return f"429_NO_BODY_size{size}"
+    if status == 429 and not body:
+        return classify_429_by_size(size)
     if status == 403 and any(r in body for r in HARD_REASONS):
         return "HARD_UNUSUAL"
     if status == 403:
+        if re.search(r"UNUSUAL|recaptcha|TOO_MUCH", body, re.I):
+            return "HARD_UNUSUAL"
         return "HARD_403"
     for m in FILTER_MARKERS:
         if m in body:

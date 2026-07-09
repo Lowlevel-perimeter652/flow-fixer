@@ -16,8 +16,26 @@ export const FILTERS = [
   "PUBLIC_ERROR_UNSAFE_GENERATION",
 ];
 
-const SIZE_HARD = 287;
-const SIZE_SOFT = 297;
+// Observed ~2026 sizes for empty-body 429s. Prefer enums; sizes are a fallback only.
+// Use small bands so minor JSON whitespace/field edits don't total-fail classification.
+const SIZE_HARD_LO = 280;
+const SIZE_HARD_HI = 292;
+const SIZE_SOFT_LO = 290;
+const SIZE_SOFT_HI = 310;
+
+/** Fallback when body missing — returns [cls, lowConfidence] */
+export function classify429BySize(size) {
+  const n = Number(size);
+  if (!Number.isFinite(n) || n < 0) return ["429_NO_BODY", true];
+  // Prefer soft band when overlapping ambiguity: soft was measured at 297, hard 287
+  if (n >= SIZE_HARD_LO && n <= SIZE_HARD_HI && !(n >= 293 && n <= SIZE_SOFT_HI)) {
+    // 280-292 → hard (classic 287)
+    if (n <= 292) return ["HARD_UNUSUAL", true];
+  }
+  if (n >= 293 && n <= SIZE_SOFT_HI) return ["SOFT_THROTTLE", true];
+  if (n >= SIZE_HARD_LO && n <= 292) return ["HARD_UNUSUAL", true];
+  return [`429_NO_BODY_size${n}`, true];
+}
 
 export function classify(status, body, size) {
   body = body || "";
@@ -28,15 +46,19 @@ export function classify(status, body, size) {
   for (const r of SOFT) {
     if (body.includes(r)) return "SOFT_THROTTLE";
   }
+  // Partial body / truncated
+  if (status === 429 && body) {
+    if (/TOO_MUCH|UNUSUAL_ACTIVITY/i.test(body)) return "HARD_UNUSUAL";
+    if (/THROTTLED|too quickly/i.test(body)) return "SOFT_THROTTLE";
+  }
   if (status === 429 && !body) {
-    if (size === SIZE_HARD) return "HARD_UNUSUAL";
-    if (size === SIZE_SOFT) return "SOFT_THROTTLE";
-    return `429_NO_BODY_size${size}`;
+    return classify429BySize(size)[0];
   }
   if (status === 403) {
     for (const r of HARD) {
       if (body.includes(r)) return "HARD_UNUSUAL";
     }
+    if (/UNUSUAL|recaptcha|TOO_MUCH/i.test(body)) return "HARD_UNUSUAL";
     return "HARD_403";
   }
   for (const m of FILTERS) {
@@ -54,6 +76,8 @@ export function severity(cls) {
   if (cls === "SOFT_THROTTLE") return "soft";
   if (cls === "HARD_UNUSUAL" || cls === "HARD_403") return "hard";
   if (String(cls).startsWith("FILTER")) return "filter";
+  // Unknown 429 body: treat as soft for auto-throttle (less punitive) but still show in feed
+  if (cls === "429_NO_BODY" || String(cls).startsWith("429_NO_BODY_size")) return "soft";
   if (String(cls).startsWith("429")) return "hard";
   return "other";
 }

@@ -36,10 +36,12 @@ def test_classify_soft():
 
 def test_classify_hard_by_size():
     assert classify_outcome(429, "", 287) == "HARD_UNUSUAL"
+    assert classify_outcome(429, "", 285) == "HARD_UNUSUAL"  # band
 
 
 def test_classify_soft_by_size():
     assert classify_outcome(429, "", 297) == "SOFT_THROTTLE"
+    assert classify_outcome(429, "", 300) == "SOFT_THROTTLE"  # band
 
 
 def test_classify_filter():

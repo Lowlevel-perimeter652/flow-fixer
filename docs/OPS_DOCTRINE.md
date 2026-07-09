@@ -44,7 +44,9 @@ This is **not** a bypass guide. It is how you avoid volunteering for a sticky lo
 4. **Heavy ref stacks cost more.** Prototype with 0–1 refs; add later.  
 5. **Video:** watch credits; check library before re-paying a “failed” card. Prefer silent-return if the UI ever exposes it (`BLOCK_SILENCED_VIDEOS` is fail-closed).  
 6. **Stable IP** for heavy days; don’t rotate VPN exits mid-session.  
-7. **Clean profile** for production (minimal extensions) when things get weird.
+7. **Clean profile** for production (minimal extensions) when things get weird.  
+8. **A/B the extension** if hard gates feel worse with it on — patched `fetch` is theoretically visible to reCAPTCHA (see [LIMITATIONS.md](LIMITATIONS.md)).  
+9. **VPN first:** confirm exit ASN before blaming velocity alone.
 
 ---
 
