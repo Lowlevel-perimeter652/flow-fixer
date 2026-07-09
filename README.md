@@ -12,10 +12,15 @@
   <img alt="Not a bot" src="https://img.shields.io/badge/not-a%20bot%20%2F%20bypass-red?style=flat-square"/>
 </p>
 
-Flow Fixer turns a Chrome HAR into a clear diagnosis of why Flow said *“unusual activity”* when a human was just clicking **Retry**.
+Flow Fixer measures a sharp product bug:
 
-It does **not** forge reCAPTCHA, automate generation, or dodge rate limits.  
-It measures the product’s own request physics so users and eng can see the same thing.
+**Flow’s UI multiplies one human click into N scored generate calls. Flow’s abuse layer then calls that traffic “unusual activity.”**
+
+It turns a Chrome HAR (or a live session via the extension) into the chart that makes that undeniable — soft vs hard gates, fan-position pass rates, sticky recovery.
+
+It does **not** forge reCAPTCHA, automate generation, or dodge limits. Read-only forensics only.
+
+Staff-eng write-up: **[docs/ENG_BRIEF.md](docs/ENG_BRIEF.md)** — the document that should produce *“ahh shit.”*
 
 <p align="center">
   <img src="docs/assets/ui_unusual_activity.png" alt="Google Flow UI: Failed — We noticed some unusual activity" width="820"/>
@@ -120,13 +125,15 @@ python -m flowfixer analyze ./capture.SANITIZED.har
 
 ## For Flow / Labs engineers
 
-If this landed on your desk: thanks for reading.
+If this landed on your desk, start here:
 
-- Sanitized HARs + repro notes available on request  
-- Happy to walk fan-position charts and sticky-gate probes on a short call  
-- Proposed fixes in the brief are intentionally small and testable (stagger fan-out, de-weight product retries, honest sticky copy, align silent-video flag)
+1. **[docs/ENG_BRIEF.md](docs/ENG_BRIEF.md)** — TL;DR + fan-position + acceptance tests (the “ahh shit” doc)  
+2. Fan chart in this README (or run the CLI on your own HAR)  
+3. Optional: load the extension, fire multi-output once, watch pos 0 live while the tail 429s  
 
-This repo is **read-only forensics** by design.
+You do not need a special quota story. You need the UI and the scorer to agree on what a click is.
+
+Sanitized HARs + walkthrough available on request. **Read-only forensics** by design.
 
 ---
 

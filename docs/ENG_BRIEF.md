@@ -1,184 +1,250 @@
 # Flow client fan-out × reCAPTCHA velocity
 
 **Production failure analysis & fix proposals**  
-Independent reliability research on Google Flow (labs.google) · 2026
+Independent reliability research · Google Flow (`labs.google`) · 2026
 
-> Audience: Flow / Labs / abuse / client eng  
-> Not a consumer complaint. Not a request for special quota.  
-> Goal: align the product UI with the traffic-scoring system that already exists.
+| | |
+|--|--|
+| **Audience** | Flow / Labs client eng, abuse / trust, SRE-adjacent |
+| **This is not** | A refund ticket · a quota beg · a bypass write-up |
+| **This is** | Your first-party client is the dominant source of the traffic shape your scorer calls “unusual” |
 
 ---
 
-## Summary
+## TL;DR (the “ahh shit” paragraph)
 
-Paying Flow traffic is evaluated **per HTTP generate call** by reCAPTCHA Enterprise. Failures surface as:
+You evaluate **reCAPTCHA risk per generate HTTP call**.  
+The Flow UI implements multi-output and Retry as **N parallel generate HTTP calls** (often 4; Retry-All 12–20), each with a **fresh token**, often with captcha context nested **twice** on the image path.  
+
+Measured result: **pass rate collapses by fire-order inside a single human click** (~90% at position 0 → ~0% at position 6+). Identical creative payload, unique seeds, unique tokens — outcome is *when in the burst*, not *what the user asked for*.  
+
+Sustained use flips soft throttle (`USER_REQUESTS_THROTTLED`) into hard unusual-activity (`TOO_MUCH_TRAFFIC`). Hard becomes **sticky** past multi-minute quiet gaps, so Help Center “retry after a couple of minutes” is **false under measurement**.  
+
+Your own **Retry** control is intermittent reinforcement: some siblings pass, users hammer, score worsens. You are training paying humans to emit the abuse pattern.
+
+**One sentence:** the product manufactures the botnet signature, then blames the customer.
+
+Tooling (CLI + browser extension, read-only): this repo — **Flow Fixer**.
+
+---
+
+## Two 429s, two machines (please stop treating them as one)
+
+### Hard — abuse / reCAPTCHA velocity
 
 ```text
-HTTP 429 RESOURCE_EXHAUSTED
-message: "reCAPTCHA evaluation failed"
-reason:  PUBLIC_ERROR_UNUSUAL_ACTIVITY_TOO_MUCH_TRAFFIC
+HTTP 429  RESOURCE_EXHAUSTED
+message:  "reCAPTCHA evaluation failed"
+reason:   PUBLIC_ERROR_UNUSUAL_ACTIVITY_TOO_MUCH_TRAFFIC
 ```
 
-Separately, ordinary throttling appears as:
+UI copy: *“We noticed some unusual activity…”*  
+Empty-body fingerprint observed when DevTools drops text: **~287 B**.
+
+### Soft — ordinary throttle
 
 ```text
-HTTP 429 RESOURCE_EXHAUSTED
-message: "Resource has been exhausted (e.g. check quota)."
-reason:  PUBLIC_ERROR_USER_REQUESTS_THROTTLED
+HTTP 429  RESOURCE_EXHAUSTED
+message:  "Resource has been exhausted (e.g. check quota)."
+reason:   PUBLIC_ERROR_USER_REQUESTS_THROTTLED
 ```
 
-The Flow **frontend multiplies a single user action into many generate calls** (commonly 4 for multi-output; 12–20 for Retry / Retry-All). Each call carries a fresh reCAPTCHA token and is scored independently. Pass rate collapses by fire-order within a burst. After sustained load, the hard gate becomes **sticky** — sparse probes minutes later still fail — so the published guidance “retry after a couple of minutes” is incomplete.
+Empty-body fingerprint: **~297 B**.
 
-This is a **client architecture ↔ abuse-scoring mismatch**, not evidence that Ultra subscribers are botnets.
+If oncall only greps `429`, you will never see the soft→hard escalation story. These are different products.
 
 ---
 
 ## Method
 
-- Chrome HAR captures during real interactive sessions (sanitized before share)
-- Generate-call isolation (`aisandbox-pa.googleapis.com` + Generate, excluding status polls)
-- Outcome classification (soft / hard / filter / OK) including body-size fingerprints when DevTools drops response text
-- Burst clustering (gap ≤ 2s)
-- Fan-position pass rates within clusters
-- reCAPTCHA token presence + uniqueness audits
-- Sticky probes: single requests after multi-minute quiet gaps
+- Interactive sessions; Chrome HAR (sanitized) + live extension observer  
+- Generate isolation: `aisandbox-pa.googleapis.com` + Generate; exclude status polls / frontend logs  
+- Classification: body reason enums + size fingerprints when body missing  
+- Burst clusters: gap ≤ 2s  
+- Fan-position pass rates within cluster  
+- Token presence + uniqueness  
+- Sticky probes: single generates after multi-minute quiet  
 
-Tooling for this analysis is open-sourced as **Flow Fixer** in this repository.
+Open-source classifiers: `flowfixer` CLI + `extension/`.
 
 ---
 
-## Findings
+## Findings (ordered by how hard they should hit)
 
-### 1. Failures are not “missing / reused tokens”
+### 1. It is not broken captcha tokens
 
-Across multiple sessions:
-
-| Session type | Generate calls | Tokens present | Unique |
-|--------------|---------------:|---------------:|-------:|
-| Video lockout (hard gate) | 240 | 240 | 240 |
-| Image session (mixed) | 630 | ~629 | ~629 |
+| Session shape | Generate calls | Tokens present | Unique |
+|---------------|---------------:|---------------:|-------:|
+| Video hard-gate | 240 | 240 | 240 |
+| Image mixed | 630 | ~629 | ~629 |
 | Retry storm | 142–143 | 142 | 142 |
 
-Tokens are long-lived-format, unique per call. The hard error explicitly says **reCAPTCHA evaluation failed** with reason **TOO_MUCH_TRAFFIC** — velocity / risk scoring, not an absent token.
+Hard path says evaluation **failed** with **TOO_MUCH_TRAFFIC**. That is velocity/risk scoring. “User has a bad token” is a closed hypothesis.
 
-### 2. Wire shape: one item per HTTP body, N HTTP calls per click
+### 2. Wire shape multiplies scorer events by design
 
-Image generate bodies look like:
+Image generate bodies are effectively:
 
 ```json
 {
-  "clientContext": { "recaptchaContext": { "token": "…" }, "tool": "PINHOLE", "sessionId": ";<epoch_ms>" },
+  "clientContext": {
+    "recaptchaContext": { "token": "…", "applicationType": "RECAPTCHA_APPLICATION_TYPE_WEB" },
+    "tool": "PINHOLE",
+    "sessionId": ";<client_epoch_ms>"
+  },
   "mediaGenerationContext": { "batchId": "<uuid>" },
   "useNewMedia": true,
-  "requests": [ { /* single generate */ } ]
+  "requests": [ { /* exactly one */ } ]
 }
 ```
 
-`requests` is length **1** per HTTP call. Multi-output UI is implemented as **parallel HTTP fan-out** sharing a `batchId`, not one multi-request RPC. That multiplies scorer events per human click.
+- `requests.length === 1` **per HTTP call**  
+- Multi-output = **N HTTP calls**, same `batchId`  
+- Image path often duplicates `recaptchaContext` on outer + per-request  
 
-Image path often nests `recaptchaContext` **twice** (outer + per-request).
+You are not scoring “one user action.” You are scoring **N independently minted evaluations of one user action.**
 
-### 3. Fan-position bias (the smoking chart)
+### 3. Fan-position bias (the chart that ends the argument)
 
-Within gap≤2s clusters (one human action / retry batch):
+Gap ≤ 2s clusters (one click / one retry batch):
 
-| Fire order | Approx pass rate (retry storm) | Approx (video lockout) |
-|-----------:|-------------------------------:|-----------------------:|
+| Fire order | Retry-storm pass % | Video lockout pass % |
+|-----------:|-------------------:|---------------------:|
 | pos 0 | ~90% | ~93% |
 | pos 1 | ~50% | ~12% |
 | pos 6+ | ~0% | ~0% |
 
-Identical creative payload + unique seeds + unique tokens → outcome depends on **when** the call lands in the burst.
+Same payload family. Unique seeds. Unique tokens.  
+**Position in the parallel fan predicts survival.** That is the signature of a per-call limiter meeting a client that fans out.
 
-### 4. Soft vs hard are different machines
+If this chart is wrong, it is wrong in a lab you can reproduce in an afternoon. If it is right, the “unusual activity” label on multi-output humans is a product bug.
 
-| | Soft | Hard |
-|--|------|------|
-| Reason | `USER_REQUESTS_THROTTLED` | `UNUSUAL_ACTIVITY_TOO_MUCH_TRAFFIC` |
-| Message | Resource exhausted / quota-ish | reCAPTCHA evaluation failed |
-| Empty-body size fingerprint (observed) | ~297 B | ~287 B |
-| Recovery | wait / pace | can become sticky for many minutes |
+### 4. Sticky hard gate falsifies published recovery copy
 
-### 5. Sticky hard gate falsifies short cooldowns
+After hard gate engagement, **single** probes after quiet gaps of **~6–11 minutes** still returned hard unusual-activity.
 
-In a long image session, after the hard gate engaged, single generate attempts after quiet gaps of **~6–11 minutes** still returned hard unusual-activity. “Wait a couple of minutes” is not a reliable recovery procedure once sticky.
+Help / staff guidance that reduces to “wait a couple of minutes” is incomplete. Sticky TTL is either longer, session-scoped, or both — and users are not told which.
 
-### 6. Retry is an intermittent-reinforcement trap
+### 5. Retry is an intermittent-reinforcement trap you shipped
 
-A 4-minute Retry storm on one payload family delivered ~43 images and ~98 hard blocks. Partial success trains users to hammer Retry; hammering feeds the score; sticky lockout follows. **The product’s own Retry control manufactures the traffic shape the scorer punishes.**
+~4 minutes of Retry on one creative family (measured):
 
-### 7. Config vs client contradiction (video audio)
+- ~43 × 200  
+- ~98 × hard unusual  
 
-App config (`videoFx.getFlowAppConfig`) includes:
+Partial success teaches hammering. Hammering feeds the score. Sticky lockout follows.  
+**The Retry button is a first-party load generator aimed at your own abuse detector.**
+
+### 6. Config ↔ client contradiction (free own-goal)
+
+`videoFx.getFlowAppConfig` (observed):
 
 - `isReturnSilentVideosEnabled: true`
 
-Observed video generate bodies send:
+Video generate bodies (observed):
 
-- `mediaGenerationContext.audioFailurePreference: "BLOCK_SILENCED_VIDEOS"`
+- `audioFailurePreference: "BLOCK_SILENCED_VIDEOS"`
 
-That fail-closed preference forces retries on audio failure even when silent return is feature-flagged on — another avoidable burst source.
+Server can return silent; client defaults fail-closed → more retries → more scored traffic. That is not abuse. That is a flag/default mismatch.
 
-### 8. Method note on mixed sessions
+### 7. Method honesty (so you don’t waste cycles)
 
-Sessions with large volumes of content-policy `400`s are **not** ideal primary exhibits for a pure traffic claim. Use them for sticky-gate / escalation timelines; use cleaner video or same-payload retry captures for content-neutral traffic scoring.
+Sessions dominated by content-policy `400`s are poor **primary** exhibits for a pure traffic claim. Use them for escalation timelines. Lead with:
 
----
+- same-payload retry storms  
+- video hard-gate sessions with clean token audits  
+- fan-position charts  
 
-## Fix proposals (small, testable)
-
-### F1 — Client: stop turning one click into N scored events
-
-**Options (any one helps):**
-
-1. Serialize multi-output generate (small stagger, e.g. 250–500ms)  
-2. One reCAPTCHA evaluation per `batchId`, reused for sibling outputs  
-3. Default Ultra power users to output=1 when soft throttle is near  
-
-**Acceptance:** 20 consecutive output=4 human clicks at human pace do not enter hard unusual within a fixed window on a healthy account.
-
-### F2 — Scorer: de-weight product-induced retries
-
-Blocked calls and identical-payload retry families should not escalate sticky score the same as novel cross-session automation.
-
-**Acceptance:** Retry-All on 4 already-failed cards creates no more sticky risk than 4 spaced single clicks.
-
-### F3 — Product copy + published limits
-
-- Distinct UI strings for soft vs hard  
-- When sticky, show an honest cooldown (or “session cooling”) instead of “try again in a couple of minutes”  
-- Publish numeric tier limits for Ultra so users can plan production  
-
-### F4 — Align silent-video flag with client preference
-
-If `isReturnSilentVideosEnabled`, default preference should not be `BLOCK_SILENCED_VIDEOS` without a user-facing control.
-
-**Acceptance:** audio-quality failure can complete as silent when flag is on, without requiring a retry storm.
-
-### F5 — Instrumentation
-
-Log `batchId`, fan index, and soft→hard transitions server-side so eng can see UI fan-out in abuse dashboards (not just raw QPS).
+Flow Fixer will literally note when filters dominate a capture. We are not smuggling a filter debate into a traffic bug.
 
 ---
 
-## What good looks like
+## Root cause (working model)
 
-A paying human using multi-output and occasional Retry should not be indistinguishable from distributed abuse **because the first-party client emits abuse-shaped traffic.**
+```text
+human click
+  → PINHOLE UI fans out N generate RPCs (shared batchId)
+  → N reCAPTCHA evaluations (sometimes 2× embedded per RPC)
+  → soft throttle (USER_REQUESTS_THROTTLED)
+  → hard unusual (TOO_MUCH_TRAFFIC)
+  → sticky session score
+  → UI still shows Retry
+  → user becomes the DDoS
+```
+
+Capacity constraints are real. **Mislabeling first-party fan-out as “unusual activity” is optional, and you opted in.**
 
 ---
 
-## Offer
+## Fix proposals (small, testable, no heroics)
 
-- Sanitized HARs and analysis scripts available to Google eng  
-- Happy to join a short repro / walkthrough call  
-- This repo (`flow-fixer`) is intentionally **read-only forensics** — no generation automation  
+### F1 — Client: one human action ≠ N scored events
+
+Any of:
+
+1. Stagger multi-output (250–500ms)  
+2. One reCAPTCHA evaluation per `batchId` for sibling outputs  
+3. Serialize outputs when soft throttle is near  
+
+**Acceptance:** 20× output=4 at human pace on a healthy Ultra account does not enter hard unusual in a fixed window.
+
+### F2 — Scorer: stop training on your own Retry
+
+Blocked calls and identical-payload retry families should not escalate sticky score like novel cross-session automation.
+
+**Acceptance:** Retry-All on 4 already-failed cards ≤ sticky risk of 4 spaced single clicks.
+
+### F3 — Honest product copy
+
+- Different strings for soft vs hard  
+- When sticky: real cooldown / “session cooling,” not “a couple of minutes”  
+- Publish numeric tier limits so production users can plan  
+
+### F4 — Align silent-video flag and default
+
+If `isReturnSilentVideosEnabled`, do not default `BLOCK_SILENCED_VIDEOS` with no control.
+
+**Acceptance:** audio fail can complete silent when flag is on — no forced retry storm.
+
+### F5 — Instrument what you actually emit
+
+Log `batchId`, fan index (0..N-1), and soft→hard transitions in abuse dashboards.  
+If dashboards only show raw QPS, you will keep paging yourselves for your own UI.
+
+---
+
+## What “fixed” means
+
+A paying human using multi-output and occasional Retry should not be **statistically indistinguishable from distributed abuse** solely because **the first-party client emits abuse-shaped traffic**.
+
+You can keep capacity limits. You cannot keep calling the customer’s browser a botnet for obeying your buttons.
+
+---
+
+## Artifacts
+
+| Artifact | Role |
+|----------|------|
+| This brief | Argument + acceptance tests |
+| `flowfixer` CLI | Offline HAR sanitize / classify / fan report |
+| Browser extension | Live soft/hard/fan monitor (no HAR) |
+| `docs/assets/*` | Architecture + fan-position charts |
+
+Sanitized HARs available to Google eng on request. Walkthrough call welcome.  
+Repo scope is **read-only forensics** — deliberately no generation automation.
 
 ---
 
 ## Non-goals
 
-- Evading abuse detection  
+- Evading detection  
 - Special capacity for one account  
-- Public shaming  
+- Public pile-on  
 
-The desired end state is simple: **Flow’s UI and Flow’s scorer agree on what a human click is.**
+---
+
+## Closing line
+
+**Make Flow’s UI and Flow’s scorer agree on what a human click is.**
+
+Until then, every multi-output Ultra session is a live repro — and every Retry is a gift to your false-positive rate.
