@@ -358,7 +358,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           ok: true,
           report: {
             tool: "flow-fixer-extension",
-            version: "0.2.2",
+            version: "0.3.0",
             exportedAt: new Date().toISOString(),
             sessionStartedAt: new Date(state.sessionStartedAt).toISOString(),
             autoThrottle: state.autoThrottle,

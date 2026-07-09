@@ -28,3 +28,5 @@ python -m flowfixer sanitize raw.har -o sanitized.har
 ```
 
 before upload, email, or Discord. Default mode redacts token strings.
+
+See also [PRIVACY.md](PRIVACY.md).

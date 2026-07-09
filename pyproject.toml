@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flowfixer"
-version = "0.1.0"
-description = "Reliability toolkit for Google Flow — HAR forensics, fan-out analysis, eng brief. Not a bypass tool."
+version = "0.3.0"
+description = "Reliability toolkit for Google Flow — HAR forensics, live monitor, optional self-pacing. Not a bypass tool."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

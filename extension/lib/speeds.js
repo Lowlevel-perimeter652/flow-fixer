@@ -74,7 +74,8 @@ export const SPEEDS = [
     gapMs: 0,
     serialize: false,
     staggerMs: 0,
-    blurb: "Full send. Parallel fan-out. You asked for the train wreck.",
+    blurb:
+      "Full parallel fan-out — no pacing. Will trip soft/hard under load. Use intentionally (monitor or stress test), not as a daily default.",
   },
 ];
 

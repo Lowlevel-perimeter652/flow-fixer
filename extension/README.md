@@ -1,104 +1,63 @@
 # Flow Fixer — browser extension
 
-Live reliability monitor + **AUTO-THROTTLE** for [Google Flow](https://labs.google/fx/tools/flow).
+Live reliability monitor + optional **AUTO-THROTTLE** for [Google Flow](https://labs.google/fx/tools/flow).
 
-## Download (what most people want)
+Local only. Does not forge captcha, automate generation, or upload your prompts.
 
-### Direct zip (latest release)
+## Download
 
-**[Download flow-fixer-extension.zip](https://github.com/coldbricks/flow-fixer/releases/latest/download/flow-fixer-extension.zip)**
+**[flow-fixer-extension.zip](https://github.com/coldbricks/flow-fixer/releases/latest/download/flow-fixer-extension.zip)**
 
-That link always points at the newest packaged build. Your browser downloads it like any other file.
+Always points at the latest release.
 
-### Install from the zip (Chrome / Edge / Brave)
+## Install (Chrome / Edge / Brave)
 
-1. **Download** the zip (link above)
-2. **Unzip** to a folder you won’t delete (example: `C:\Users\You\Apps\flow-fixer-extension`)
-3. Open `chrome://extensions` or `edge://extensions`
-4. Turn on **Developer mode**
-5. Click **Load unpacked**
-6. Select the unzipped folder — you should see `manifest.json` inside it
-7. Open https://labs.google/fx/tools/flow and **hard refresh** (`Ctrl+Shift+R`)
-8. Pin **Flow Fixer** on the toolbar
+1. Download the zip  
+2. Unzip to a permanent folder  
+3. `chrome://extensions` or `edge://extensions` → **Developer mode**  
+4. **Load unpacked** → folder containing `manifest.json`  
+5. Open Flow → **hard refresh** (`Ctrl+Shift+R`)  
+6. Pin **Flow Fixer**
 
-### Why not “Add to Chrome” one-click?
-
-Google only allows silent install from the **Chrome Web Store** (or enterprise policy).  
-GitHub zips are the standard open-source distribution path: download in browser → Load unpacked.
-
----
+Chrome cannot one-click install zips from GitHub (Web Store only).
 
 ## AUTO-THROTTLE
 
-Optional **pace control** on *your* generate calls. Does not forge captcha or strip tokens.
-It **serializes / delays** requests so multi-output and Retry don’t redline the scorer.
+When **on** (default), the extension may **serialize and delay** *your* generate requests so multi-output / Retry don’t immediately redline the scorer.
 
-### Speed ladder (slow → yeehaw)
+When **off**, it only monitors (no pacing).
 
-| Gear | Vibe | Gap (approx) |
-|------|------|--------------|
-| 🧊 **Molasses** | in January — way under throttle | ~9s |
-| 💧 **Water** | room temp | ~4.5s |
-| 🚶 **Brisk Walk** | coffee in hand | ~2.5s |
-| 💼 **The Job** | paid to ship (default) | ~1.2s |
-| 🎸 **Highway Star** | Alright. Hold tight. (Deep Purple) | ~0.6s |
-| 🐎 **Black Beauty** | horse + amphetamine | ~0.3s |
-| 🚂 **Casey Jones** | danger at the wheel | parallel / full send |
+### Speed ladder
 
-**Auto shift (default ON):**
-- soft throttle → downshift 2 gears  
-- hard unusual → **Molasses** + ~12 min cool-down hold  
-- clean OK streak → gradual upshift  
+| Gear | Vibe | Approx gap |
+|------|------|------------|
+| 🧊 Molasses | Way under throttle | ~9s |
+| 💧 Water | Calm | ~4.5s |
+| 🚶 Brisk Walk | Human pace | ~2.5s |
+| 💼 The Job | Default | ~1.2s |
+| 🎸 Highway Star | Spicy, still serialized | ~0.6s |
+| 🐎 Black Beauty | Fast | ~0.3s |
+| 🚂 Casey Jones | Full parallel | none |
 
-On-page toast when it downshifts. Toolbar badge: `⏱` armed, `~` soft, `!` / `❄` hard.
+**Casey Jones** will trip soft/hard under load — intentional stress / max fan-out only.
 
-Turn **AUTO-THROTTLE** off anytime to go pure monitor mode.
+**Auto shift:** soft → downshift; hard → Molasses + cool-down; clean OK streak → upshift.
 
-## What you’ll see
+## Export
 
-| UI | Meaning |
-|----|---------|
-| **Speed ladder** | Pick a gear or let Auto shift drive |
-| **ok / soft / hard** pill | Session health |
-| **Fan position pass %** | First-in-burst vs tail |
-| **Recent** | Status + model + pace delay |
-| **Export** | Sanitized JSON (no tokens/prompts) |
+Exports the last **500** classified generate events as JSON (outcomes, models, pace metadata). No prompts or captcha tokens.
 
-## How it works
+## Diagnostics
 
-1. A **MAIN-world** script on `labs.google` wraps `fetch` / `XHR` (observe + optional pace).
-2. Generate calls to `aisandbox-pa.googleapis.com` are classified (soft / hard / filter).
-3. Service worker keeps the last 500 events in `chrome.storage.session`.
-4. Popup renders stats; badge shows health.
+Popup shows inject heartbeat and network hit counts. If you see `inject not seen`, hard-refresh Flow after reloading the extension.
 
 ## Privacy
 
-- Tokens / projectId / sessionId redacted in the bridge  
-- Export omits prompts  
-- Nothing sent to a third-party server  
+See [PRIVACY.md](../PRIVACY.md). Nothing is sent to a Flow Fixer server.
 
-## Dev install (from repo clone)
+## Dev
 
 ```text
-Load unpacked → path/to/flow-fixer/extension
-```
-
-Rebuild release zip:
-
-```powershell
-pwsh scripts/package_extension.ps1
-```
-
-## Troubleshooting
-
-| Symptom | Fix |
-|---------|-----|
-| Always idle | Hard-refresh Flow after install/reload |
-| “Manifest file is missing” | You selected the wrong folder — pick the one with `manifest.json` |
-| Broke after update | Remove extension, re-download zip, Load unpacked again |
-
-## Pair with the CLI
-
-```bash
-python -m flowfixer analyze capture.har
+Load unpacked → repo/extension
+powershell -ExecutionPolicy Bypass -File scripts/package_extension.ps1
 ```
