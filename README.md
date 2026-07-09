@@ -18,6 +18,13 @@ It does **not** forge reCAPTCHA, automate generation, or dodge rate limits.
 It measures the product’s own request physics so users and eng can see the same thing.
 
 <p align="center">
+  <img src="docs/assets/ui_unusual_activity.png" alt="Google Flow UI: Failed — We noticed some unusual activity" width="820"/>
+</p>
+<p align="center">
+  <sub>What users see: three dead cards, Retry buttons still armed — the trap that feeds the scorer.</sub>
+</p>
+
+<p align="center">
   <img src="docs/assets/cli_preview.png" alt="flowfixer analyze terminal preview" width="820"/>
 </p>
 
